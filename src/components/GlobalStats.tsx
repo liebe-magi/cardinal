@@ -12,11 +12,18 @@ interface StatsEntry {
   extra?: string; // Used for play count
 }
 
+interface ActivityStats {
+  total_players: number;
+  total_plays: number;
+  global_accuracy: number;
+}
+
 export function GlobalStats() {
   const navigate = useNavigate();
   const { lang, t } = useSettingsStore();
 
   const [entries, setEntries] = useState<StatsEntry[]>([]);
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [citySortAsc, setCitySortAsc] = useState(false);
 
@@ -50,6 +57,12 @@ export function GlobalStats() {
         }) || [];
 
       setEntries(data);
+
+      // Fetch global activity stats
+      const { data: activityData } = await supabase.rpc('get_global_activity_stats');
+      if (activityData && activityData.length > 0) {
+        setActivityStats(activityData[0]);
+      }
     } catch (err) {
       console.error('Error fetching global stats:', err);
       setEntries([]);
@@ -69,6 +82,36 @@ export function GlobalStats() {
         <h2 className="text-xl font-bold text-center mb-5 text-text-primary">
           🌍 {t.ui.globalStats || 'Global Stats'}
         </h2>
+
+        {/* Top Activity Cards */}
+        {activityStats && (
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-8">
+            <div className="bg-surface-light border border-white/5 rounded-xl p-3 sm:p-4 text-center">
+              <div className="text-[10px] sm:text-xs text-text-secondary font-semibold mb-1 uppercase tracking-wider">
+                {(t.ui as any).totalQuestionsAnswered || '総回答数'}
+              </div>
+              <div className="text-lg sm:text-2xl font-bold text-primary">
+                {activityStats.total_plays.toLocaleString()}
+              </div>
+            </div>
+            <div className="bg-surface-light border border-white/5 rounded-xl p-3 sm:p-4 text-center">
+              <div className="text-[10px] sm:text-xs text-text-secondary font-semibold mb-1 uppercase tracking-wider">
+                {(t.ui as any).totalPlayers || '総プレイヤー数'}
+              </div>
+              <div className="text-lg sm:text-2xl font-bold text-secondary">
+                {activityStats.total_players.toLocaleString()}
+              </div>
+            </div>
+            <div className="bg-surface-light border border-white/5 rounded-xl p-3 sm:p-4 text-center">
+              <div className="text-[10px] sm:text-xs text-text-secondary font-semibold mb-1 uppercase tracking-wider">
+                {(t.ui as any).globalAccuracy || '平均正答率'}
+              </div>
+              <div className="text-lg sm:text-2xl font-bold text-accent">
+                {activityStats.global_accuracy}%
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* City difficulty sort toggle */}
         <div className="flex items-center justify-center gap-2 mb-5">
