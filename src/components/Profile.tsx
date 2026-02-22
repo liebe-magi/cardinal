@@ -351,7 +351,7 @@ export function Profile() {
             <div className="max-h-[24rem] overflow-y-auto rounded-xl border border-white/5">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-text-secondary border-b border-white/8 bg-surface-light/30 sticky top-0">
+                  <tr className="text-text-secondary border-b border-white/8 bg-surface/95 backdrop-blur-sm sticky top-0 z-10">
                     <th className="text-left py-2.5 px-3 font-semibold">{t.ui.country}</th>
                     <th className="text-left py-2.5 px-3 font-semibold">{t.ui.capital}</th>
                     <th className="text-right py-2.5 px-3 font-semibold">{t.ui.weaknessScore}</th>
