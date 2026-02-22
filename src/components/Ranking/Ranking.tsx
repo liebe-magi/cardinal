@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { Header } from '../Header';
 
-type RankingTab = 'rating' | 'survival_rated' | 'daily';
+type RankingTab = 'rating' | 'survival_rated' | 'daily' | 'daily_avg';
 
 interface RankingEntry {
   id: string;
@@ -80,6 +80,20 @@ export function Ranking() {
             })) || [];
           break;
         }
+
+        case 'daily_avg': {
+          const { data: results } = await supabase.rpc('get_daily_average_ranking');
+          data =
+            results?.map(
+              (r: { id: string; username: string; rating: number; play_count: number }) => ({
+                id: r.id,
+                username: r.username || '???',
+                value: r.rating,
+                extra: String(r.play_count),
+              }),
+            ) || [];
+          break;
+        }
       }
 
       setEntries(data);
@@ -97,8 +111,9 @@ export function Ranking() {
 
   const tabs: { key: RankingTab; label: string }[] = [
     { key: 'rating', label: t.ui.rankingRating },
-    { key: 'survival_rated', label: t.ui.rankingSurvivalRated || 'サバイバル(Rated)' },
+    { key: 'survival_rated', label: t.ui.rankingSurvivalRated || '連続正解数' },
     { key: 'daily', label: t.ui.rankingDailyChallenge || 'デイリーチャレンジ' },
+    { key: 'daily_avg', label: t.ui.rankingDailyAvg || 'デイリー平均' },
   ];
 
   const changeDay = (delta: number) => {
@@ -174,9 +189,13 @@ export function Ranking() {
                   <th className="text-left py-2.5 px-3 font-semibold w-12">#</th>
                   <th className="text-left py-2.5 px-3 font-semibold">{t.ui.username}</th>
                   <th className="text-right py-2.5 px-3 font-semibold">
-                    {activeTab === 'rating' ? t.ui.rating : t.ui.score}
+                    {activeTab === 'rating' || activeTab === 'survival_rated'
+                      ? t.ui.score || t.ui.rating
+                      : activeTab === 'daily_avg'
+                        ? t.ui.avgScore || '平均スコア'
+                        : t.ui.score}
                   </th>
-                  {activeTab === 'rating' && (
+                  {(activeTab === 'rating' || activeTab === 'daily_avg') && (
                     <th className="text-right py-2.5 px-3 font-semibold">{t.ui.playCount}</th>
                   )}
                 </tr>
@@ -198,7 +217,7 @@ export function Ranking() {
                       <td className="py-2 px-3 text-right font-bold text-text-primary">
                         {entry.value}
                       </td>
-                      {activeTab === 'rating' && (
+                      {(activeTab === 'rating' || activeTab === 'daily_avg') && (
                         <td className="py-2 px-3 text-right text-text-secondary text-xs">
                           {entry.extra}
                         </td>
