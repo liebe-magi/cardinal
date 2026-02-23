@@ -31,9 +31,10 @@ function getMarkerRadius(score: number): number {
 export function Profile() {
   const navigate = useNavigate();
   const { lang, t } = useSettingsStore();
-  const { profile, signOut, updateProfile, isAuthenticated } = useAuthStore();
+  const { profile, signOut, updateProfile } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'map' | 'list'>('overview');
+  const [activeTab, setActiveTab] = useState<'stats' | 'weakness'>('stats');
+  const [weaknessView, setWeaknessView] = useState<'map' | 'list'>('map');
   const [editing, setEditing] = useState(false);
   const [newUsername, setNewUsername] = useState(profile?.username || '');
   const [saving, setSaving] = useState(false);
@@ -44,6 +45,8 @@ export function Profile() {
     survivalUnrated: ModeStats;
     challengeDaily: ModeStats;
     challengeUnrated: ModeStats;
+    highestRating: number;
+    totalRatedMatches: number;
   } | null>(null);
 
   const mapRef = useRef<HTMLDivElement>(null);
@@ -57,12 +60,6 @@ export function Profile() {
       score: scores[city.countryCode] || 0,
     }))
     .sort((a, b) => b.score - a.score);
-
-  useEffect(() => {
-    if (!isAuthenticated || !profile) {
-      navigate('/login', { replace: true });
-    }
-  }, [isAuthenticated, profile, navigate]);
 
   useEffect(() => {
     if (profile?.id) {
@@ -165,16 +162,34 @@ export function Profile() {
   }, [cityScores, lang, t.ui.weaknessScore]);
 
   useEffect(() => {
-    if (activeTab === 'map') {
-      setTimeout(initMap, 100);
+    let timeoutId: number;
+    if (activeTab === 'weakness' && weaknessView === 'map') {
+      // Need to wait for the DOM 'hidden' class to be removed
+      timeoutId = window.setTimeout(() => {
+        if (!mapInstance.current) {
+          initMap();
+        } else {
+          mapInstance.current.invalidateSize();
+        }
+      }, 150);
     }
+    return () => {
+      clearTimeout(timeoutId);
+      // Let's not completely destroy the map on unmount of the view unless component unmounts
+      // but if we do, we need to handle it. Actually, unmounting the map on every tab switch
+      // is causing the _leaflet_pos error if anims are running. Let's just invalidate size on show.
+    };
+  }, [activeTab, weaknessView, initMap]);
+
+  // Clean up map only on full unmount
+  useEffect(() => {
     return () => {
       if (mapInstance.current) {
         mapInstance.current.remove();
         mapInstance.current = null;
       }
     };
-  }, [activeTab, initMap]);
+  }, []);
 
   if (!profile) return null;
 
@@ -192,219 +207,301 @@ export function Profile() {
       <Header />
       <div className="glass-card mb-8 p-6 sm:p-8 animate-fade-in max-w-lg lg:max-w-3xl mx-auto w-full">
         <h2 className="text-xl font-bold text-center mb-6 text-text-primary">
-          📊 {t.ui.profile} & {(t.ui as any).statsTitle || 'Stats'}
+          📊 {t.ui.profile} & {t.ui.profileStats || 'Stats'}
         </h2>
+
+        {/* Username Edit (Moved to top) */}
+        <div className="mb-6">
+          <label className="text-text-secondary text-xs mb-1.5 block uppercase tracking-wider font-medium">
+            {t.ui.username}
+          </label>
+          {editing ? (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newUsername}
+                onChange={(e) => setNewUsername(e.target.value)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-surface-light/60 border border-white/8 text-text-primary focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all duration-200"
+              />
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="btn-glow px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
+              >
+                {saving ? '...' : t.ui.confirm}
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between bg-surface-light/40 border border-white/5 rounded-xl px-4 py-2.5">
+              <span className="text-text-primary text-lg font-bold">
+                {profile.username || '(no name)'}
+              </span>
+              <button
+                onClick={() => {
+                  setNewUsername(profile.username || '');
+                  setEditing(true);
+                }}
+                className="text-primary text-xs cursor-pointer bg-transparent border-none hover:text-cyan-300 transition-colors font-medium px-2 py-1"
+              >
+                Edit
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Custom Dashboard Tabs */}
         <div className="flex bg-surface-light/40 p-1 rounded-xl mb-6">
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => setActiveTab('stats')}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-              activeTab === 'overview'
+              activeTab === 'stats'
                 ? 'bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-primary'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            Overview
+            {t.ui.profileStats || 'Stats'}
           </button>
           <button
             onClick={() => {
-              setActiveTab('map');
-              if (mapInstance.current) {
+              setActiveTab('weakness');
+              if (weaknessView === 'map' && mapInstance.current) {
                 setTimeout(() => mapInstance.current?.invalidateSize(), 50);
               }
             }}
             className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-              activeTab === 'map'
+              activeTab === 'weakness'
                 ? 'bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-primary'
                 : 'text-text-secondary hover:text-text-primary'
             }`}
           >
-            {t.ui.weaknessMap || 'Map'}
-          </button>
-          <button
-            onClick={() => setActiveTab('list')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
-              activeTab === 'list'
-                ? 'bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.3)] text-primary'
-                : 'text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            {t.ui.weaknessList || 'List'}
+            {t.ui.weaknessCheck || 'Weakness'}
           </button>
         </div>
 
-        {/* Tab 1: Overview */}
-        {activeTab === 'overview' && (
-          <div className="animate-fade-in">
-            {/* Rating */}
-            <div className="mb-6 p-6 sm:p-8 bg-surface-light/40 border border-white/5 rounded-2xl text-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
-              <div className="relative">
-                <div className="text-text-secondary text-sm mb-2 uppercase tracking-wider font-medium">
-                  {t.ui.rating}
-                </div>
-                <div className="text-5xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent mb-2">
-                  {Math.round(profile.rating)}
-                </div>
-                <div className="text-xs text-text-secondary font-mono">
-                  RD: {Math.round(profile.rd)} / Vol: {profile.vol.toFixed(4)}
-                </div>
-                {rank && (
-                  <div className="text-sm text-text-secondary mt-2 font-semibold">
-                    {rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊'} {t.ui.ratingRank}:{' '}
-                    {rank.rank} / {rank.total}
-                  </div>
-                )}
+        {/* Tab 1: Stats */}
+        <div className={activeTab === 'stats' ? 'block animate-fade-in' : 'hidden'}>
+          {/* 1. Main Rating Block */}
+          <div className="mb-6 p-6 sm:p-8 bg-surface-light/40 border border-white/5 rounded-2xl text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
+            <div className="relative">
+              <div className="text-text-secondary text-sm mb-2 uppercase tracking-wider font-medium">
+                {t.ui.rating}
               </div>
-            </div>
-
-            {/* Rating History Chart */}
-            <div className="mb-6 p-4 sm:p-5 bg-surface-light/40 border border-white/5 rounded-2xl">
-              <div className="text-text-secondary text-xs mb-3 uppercase tracking-wider font-medium text-center">
-                {t.ui.ratingHistory}
+              <div className="text-5xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent mb-2">
+                {Math.round(profile.rating)}
               </div>
-              <RatingChart userId={profile.id} currentRating={profile.rating} />
-            </div>
-
-            {/* Username Edit */}
-            <div className="mb-5">
-              <label className="text-text-secondary text-xs mb-1.5 block uppercase tracking-wider font-medium">
-                {t.ui.username}
-              </label>
-              {editing ? (
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    className="flex-1 px-4 py-2.5 rounded-xl bg-surface-light/60 border border-white/8 text-text-primary focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all duration-200"
-                  />
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="btn-glow px-5 py-2.5 rounded-xl text-sm disabled:opacity-50"
-                  >
-                    {saving ? '...' : t.ui.confirm}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between bg-surface-light/40 border border-white/5 rounded-xl px-4 py-2.5">
-                  <span className="text-text-primary font-semibold">
-                    {profile.username || '(no name)'}
-                  </span>
-                  <button
-                    onClick={() => {
-                      setNewUsername(profile.username || '');
-                      setEditing(true);
-                    }}
-                    className="text-primary text-xs cursor-pointer bg-transparent border-none hover:text-cyan-300 transition-colors font-medium"
-                  >
-                    Edit
-                  </button>
+              <div className="text-xs text-text-secondary font-mono">
+                RD: {Math.round(profile.rd)} / Vol: {profile.vol.toFixed(4)}
+              </div>
+              {rank && (
+                <div className="text-sm text-text-secondary mt-2 font-semibold">
+                  {rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊'} {t.ui.ratingRank}:{' '}
+                  {rank.rank} / {rank.total}
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Mode Stats */}
-            {stats && (
-              <div className="grid grid-cols-2 gap-3 mb-6">
+          {/* Mode Stats */}
+          {stats && (
+            <div className="mb-6 space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {/* Highest Rating Box */}
                 <div className="bg-surface-light/40 border border-white/5 rounded-xl p-4 text-center">
                   <div className="text-xs text-text-secondary mb-2 font-medium">
-                    ⚔️ {t.ui.statsSurvivalRated}
+                    📈 {t.ui.highestRating || 'Highest Rating'}
+                  </div>
+                  <div className="text-2xl font-bold text-text-primary mb-1">
+                    {Math.round(stats.highestRating)}
+                  </div>
+                  <div className="text-[10px] text-text-secondary uppercase tracking-wide">
+                    Rating
+                  </div>
+                </div>
+
+                {/* Survival Rated Box */}
+                <div className="bg-surface-light/40 border border-white/5 rounded-xl p-4 text-center">
+                  <div className="text-xs text-text-secondary mb-2 font-medium">
+                    ⚔️ {t.ui.rankingSurvivalRated || 'Survival (Rated)'}
                   </div>
                   <div className="text-2xl font-bold text-text-primary mb-1">
                     {stats.survivalRated.best}
                   </div>
-                  <div className="text-[10px] text-text-secondary">{t.ui.statsBest}</div>
+                  <div className="text-[10px] text-text-secondary uppercase tracking-wide">
+                    {t.ui.statsBest}
+                  </div>
+                </div>
+
+                {/* Total Rating Matches Box */}
+                <div className="bg-surface-light/40 border border-white/5 rounded-xl p-4 text-center">
+                  <div className="text-xs text-text-secondary mb-2 font-medium">
+                    🎮 {t.ui.profilePlayCount || 'Rating Matches'}
+                  </div>
+                  <div className="text-2xl font-bold text-text-primary mb-1">
+                    {stats.totalRatedMatches}
+                  </div>
+                  <div className="text-[10px] text-text-secondary uppercase tracking-wide">
+                    Plays
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Tab 2: Map */}
-        <div className={activeTab === 'map' ? 'block animate-fade-in' : 'hidden'}>
-          <div
-            ref={mapRef}
-            className="w-full h-64 md:h-[400px] rounded-xl overflow-hidden mb-4 border border-white/5"
-          />
-          <div className="flex flex-wrap gap-2.5 justify-center mb-6">
-            {legendItems.map((item) => (
-              <span
-                key={item.label}
-                className="flex items-center gap-1.5 text-xs text-text-secondary"
-              >
-                <span
-                  className="w-3 h-3 rounded-full inline-block ring-1 ring-white/10"
-                  style={{ background: item.color }}
-                />
-                {item.label}
-              </span>
-            ))}
+              <div className="bg-surface-light/40 border border-white/5 rounded-xl p-4">
+                <div className="text-xs text-text-secondary font-medium w-full text-center mb-3">
+                  🎯 {t.ui.rankingDailyChallenge || 'Daily Challenge'}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-text-primary mb-0.5">
+                      {stats.challengeDaily.best}
+                    </div>
+                    <div className="text-[10px] text-text-secondary uppercase">
+                      {t.ui.statsBest}
+                    </div>
+                  </div>
+                  <div className="text-center border-l border-r border-white/10">
+                    <div className="text-lg font-bold text-text-primary mb-0.5">
+                      {stats.challengeDaily.avg}
+                    </div>
+                    <div className="text-[10px] text-text-secondary uppercase">
+                      {t.ui.rankingDailyAvg || 'Average'}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg font-bold text-text-primary mb-0.5">
+                      {stats.challengeDaily.count}
+                    </div>
+                    <div className="text-[10px] text-text-secondary uppercase">Plays</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Rating History Chart */}
+          <div className="mb-6 p-4 sm:p-5 bg-surface-light/40 border border-white/5 rounded-2xl">
+            <div className="text-text-secondary text-xs mb-3 uppercase tracking-wider font-medium text-center">
+              {t.ui.ratingHistory}
+            </div>
+            <RatingChart userId={profile.id} currentRating={profile.rating} />
           </div>
         </div>
 
-        {/* Tab 3: List */}
-        {activeTab === 'list' && (
-          <div className="animate-fade-in mb-6">
-            <div className="max-h-[24rem] overflow-y-auto rounded-xl border border-white/5">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-text-secondary border-b border-white/8 bg-surface/95 backdrop-blur-sm sticky top-0 z-10">
-                    <th className="text-left py-2.5 px-3 font-semibold">{t.ui.country}</th>
-                    <th className="text-left py-2.5 px-3 font-semibold">{t.ui.capital}</th>
-                    <th className="text-right py-2.5 px-3 font-semibold">{t.ui.weaknessScore}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cityScores.map((cs) => {
-                    const name = lang === 'ja' ? cs.city.nameJp : cs.city.nameEn;
-                    const capital = lang === 'ja' ? cs.city.capitalJp : cs.city.capitalEn;
-                    const color = getScoreColor(cs.score);
-                    return (
-                      <tr
-                        key={cs.city.countryCode}
-                        className="border-b border-white/5 hover:bg-surface-light/20 transition-colors"
-                      >
-                        <td className="py-2 px-3 text-text-primary">{name}</td>
-                        <td className="py-2 px-3 text-text-primary">{capital}</td>
-                        <td className="py-2 px-3 text-right">
-                          <span
-                            className="px-2.5 py-0.5 rounded-full text-xs font-bold border"
-                            style={{ color, borderColor: color }}
-                          >
-                            {cs.score}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        {/* Tab 2: Weakness */}
+        <div className={activeTab === 'weakness' ? 'block animate-fade-in' : 'hidden'}>
+          {/* Weakness Sub-tabs */}
+          <div className="flex justify-center gap-2 mb-4">
+            <button
+              onClick={() => {
+                setWeaknessView('map');
+                if (mapInstance.current) {
+                  setTimeout(() => mapInstance.current?.invalidateSize(), 50);
+                }
+              }}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 border ${
+                weaknessView === 'map'
+                  ? 'bg-primary/15 text-primary border-primary/25'
+                  : 'bg-surface-light/40 text-text-secondary border-white/5 hover:border-text-secondary/30'
+              }`}
+            >
+              {t.ui.weaknessMap || 'Map'}
+            </button>
+            <button
+              onClick={() => setWeaknessView('list')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all duration-200 border ${
+                weaknessView === 'list'
+                  ? 'bg-primary/15 text-primary border-primary/25'
+                  : 'bg-surface-light/40 text-text-secondary border-white/5 hover:border-text-secondary/30'
+              }`}
+            >
+              {t.ui.weaknessList || 'List'}
+            </button>
+          </div>
+
+          {/* Weakness Map View */}
+          <div className={weaknessView === 'map' ? 'block animate-fade-in' : 'hidden'}>
+            <div
+              ref={mapRef}
+              className="w-full h-64 md:h-[400px] rounded-xl overflow-hidden mb-4 border border-white/5"
+            />
+            <div className="flex flex-wrap gap-2.5 justify-center mb-6">
+              {legendItems.map((item) => (
+                <span
+                  key={item.label}
+                  className="flex items-center gap-1.5 text-xs text-text-secondary"
+                >
+                  <span
+                    className="w-3 h-3 rounded-full inline-block ring-1 ring-white/10"
+                    style={{ background: item.color }}
+                  />
+                  {item.label}
+                </span>
+              ))}
             </div>
           </div>
-        )}
+
+          {/* Weakness List View */}
+          {weaknessView === 'list' && (
+            <div className="animate-fade-in mb-6">
+              <div className="max-h-[24rem] overflow-y-auto rounded-xl border border-white/5">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-text-secondary border-b border-white/8 bg-surface/95 backdrop-blur-sm sticky top-0 z-10">
+                      <th className="text-left py-2.5 px-3 font-semibold">{t.ui.country}</th>
+                      <th className="text-left py-2.5 px-3 font-semibold">{t.ui.capital}</th>
+                      <th className="text-right py-2.5 px-3 font-semibold">{t.ui.weaknessScore}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cityScores.map((cs) => {
+                      const name = lang === 'ja' ? cs.city.nameJp : cs.city.nameEn;
+                      const capital = lang === 'ja' ? cs.city.capitalJp : cs.city.capitalEn;
+                      const color = getScoreColor(cs.score);
+                      return (
+                        <tr
+                          key={cs.city.countryCode}
+                          className="border-b border-white/5 hover:bg-surface-light/20 transition-colors"
+                        >
+                          <td className="py-2 px-3 text-text-primary">{name}</td>
+                          <td className="py-2 px-3 text-text-primary">{capital}</td>
+                          <td className="py-2 px-3 text-right">
+                            <span
+                              className="px-2.5 py-0.5 rounded-full text-xs font-bold border"
+                              style={{ color, borderColor: color }}
+                            >
+                              {cs.score}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* General Footer Actions */}
-        <div className="space-y-2 mt-4">
+        <div className="space-y-3 mt-6">
           <button
             onClick={handleShare}
-            className="w-full py-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all duration-200 font-semibold"
+            className="w-full py-3 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all duration-200 font-semibold"
           >
             {copied ? `✅ ${t.ui.copied}` : `📤 ${t.ui.shareProfile}`}
           </button>
 
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => navigate('/')}
-              className="py-2.5 rounded-xl bg-surface-light/50 text-text-primary border border-white/5 hover:border-text-secondary/30 hover:bg-surface-hover cursor-pointer transition-all duration-200 text-sm font-medium"
-            >
-              {t.ui.backToTop}
-            </button>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full py-3 rounded-xl bg-surface-light/50 text-text-primary border border-white/5 hover:border-text-secondary/30 hover:bg-surface-hover cursor-pointer transition-all duration-200 font-medium"
+          >
+            {t.ui.backToTop}
+          </button>
+
+          <div className="pt-4 flex justify-center">
             <button
               onClick={handleSignOut}
-              className="py-2.5 rounded-xl bg-error/10 text-error border border-error/20 hover:bg-error/20 cursor-pointer transition-all duration-200 text-sm font-semibold"
+              className="px-4 py-2 rounded-lg text-text-secondary/60 hover:text-error hover:bg-error/10 cursor-pointer transition-all duration-200 text-xs font-medium"
             >
               {t.ui.signOut}
             </button>

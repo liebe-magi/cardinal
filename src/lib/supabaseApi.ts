@@ -375,43 +375,66 @@ export async function fetchAllModeStats(userId: string): Promise<{
   survivalUnrated: ModeStats;
   challengeDaily: ModeStats;
   challengeUnrated: ModeStats;
+  highestRating: number;
+  totalRatedMatches: number;
 } | null> {
   if (!supabase) return null;
 
   // Fetch all data in parallel
-  const [profileRes, survivalRatedRes, survivalUnratedRes, dailyRes, unratedRes] =
-    await Promise.all([
-      // Profile for best scores
-      supabase
-        .from('profiles')
-        .select('best_score_survival_rated, best_score_survival_unrated')
-        .eq('id', userId)
-        .single(),
-      // Survival rated: count matches with mode='survival_rated'
-      supabase
-        .from('match_history')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('mode', 'survival_rated')
-        .neq('status', 'pending'),
-      // Survival unrated: need a different approach — survival unrated doesn't go through match_history
-      // We'll count from match_history with mode check, but survival_unrated doesn't use match_history
-      // Actually check what modes exist
-      supabase
-        .from('match_history')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('mode', 'survival_unrated')
-        .neq('status', 'pending'),
-      // Daily challenge results
-      supabase
-        .from('daily_challenge_results')
-        .select('score')
-        .eq('user_id', userId)
-        .eq('status', 'completed'),
-      // Challenge unrated results
-      supabase.from('challenge_unrated_results').select('score').eq('user_id', userId),
-    ]);
+  const [
+    profileRes,
+    survivalRatedRes,
+    survivalUnratedRes,
+    dailyRes,
+    unratedRes,
+    highestRatingRes,
+    totalRatedMatchesRes,
+  ] = await Promise.all([
+    // Profile for best scores and falling back to current rating
+    supabase
+      .from('profiles')
+      .select('best_score_survival_rated, best_score_survival_unrated, rating')
+      .eq('id', userId)
+      .single(),
+    // Survival rated: count matches with mode='survival_rated'
+    supabase
+      .from('match_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('mode', 'survival_rated')
+      .neq('status', 'pending'),
+    // Survival unrated: need a different approach — survival unrated doesn't go through match_history
+    // We'll count from match_history with mode check, but survival_unrated doesn't use match_history
+    // Actually check what modes exist
+    supabase
+      .from('match_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('mode', 'survival_unrated')
+      .neq('status', 'pending'),
+    // Daily challenge results
+    supabase
+      .from('daily_challenge_results')
+      .select('score')
+      .eq('user_id', userId)
+      .eq('status', 'completed'),
+    // Challenge unrated results
+    supabase.from('challenge_unrated_results').select('score').eq('user_id', userId),
+    // Highest rating found in match history
+    supabase
+      .from('match_history')
+      .select('user_rating_after')
+      .eq('user_id', userId)
+      .order('user_rating_after', { ascending: false })
+      .limit(1),
+    // Total rated matches count
+    supabase
+      .from('match_history')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .neq('status', 'pending')
+      .not('user_rating_after', 'is', null),
+  ]);
 
   if (profileRes.error) return null;
 
@@ -429,6 +452,12 @@ export async function fetchAllModeStats(userId: string): Promise<{
   const unratedCount = unratedScores.length;
   const unratedAvg = unratedCount > 0 ? unratedScores.reduce((a, b) => a + b, 0) / unratedCount : 0;
   const unratedBest = unratedCount > 0 ? Math.max(...unratedScores) : 0;
+
+  // Calculate highest rating (from history or current profile rating if history doesn't exceed it)
+  const currentRating = profileRes.data?.rating ?? 1500;
+  const historyHighest = highestRatingRes?.data?.[0]?.user_rating_after;
+  const highestRating =
+    historyHighest !== undefined ? Math.max(currentRating, historyHighest) : currentRating;
 
   return {
     survivalRated: {
@@ -451,6 +480,8 @@ export async function fetchAllModeStats(userId: string): Promise<{
       avg: Math.round(unratedAvg * 10) / 10,
       count: unratedCount,
     },
+    highestRating,
+    totalRatedMatches: totalRatedMatchesRes.count ?? 0,
   };
 }
 
@@ -737,6 +768,15 @@ export interface RatingHistoryPoint {
   timestamp: string;
 }
 
+export interface AggregatedCandle {
+  label: string;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  count: number;
+}
+
 /**
  * Fetch the user's rating history from match_history.
  * Returns rating after each resolved match, ordered chronologically.
@@ -766,6 +806,35 @@ export async function fetchRatingHistory(
     rating: row.user_rating_after as number,
     ratingBefore: row.user_rating_before as number,
     timestamp: row.answered_at as string,
+  }));
+}
+
+/**
+ * Fetch the user's rating history aggregated by period (day, week, month).
+ */
+export async function fetchRatingHistoryAggregated(
+  userId: string,
+  period: 'day' | 'week' | 'month',
+): Promise<AggregatedCandle[]> {
+  if (!supabase) return [];
+
+  const { data, error } = await supabase.rpc('get_rating_history_aggregated', {
+    p_user_id: userId,
+    p_period: period,
+  });
+
+  if (error) {
+    console.error('Error fetching aggregated history:', error);
+    return [];
+  }
+
+  return (data || []).map((row: any) => ({
+    label: row.period_label,
+    open: Number(row.open),
+    close: Number(row.close),
+    high: Number(row.high),
+    low: Number(row.low),
+    count: Number(row.match_count),
   }));
 }
 
