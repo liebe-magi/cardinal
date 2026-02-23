@@ -19,9 +19,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Cardinal Geo',
+        name: 'Cardinal Geo | 世界の都市を巡る、新感覚の地理探索ゲーム',
         short_name: 'Cardinal Geo',
-        description: '首都の方角当てクイズアプリ',
+        description:
+          'Cardinal Geo（カーディナル・ジオ）は、知識と直感で世界の都市の方角や位置を当てる全く新しい地理探索型クイズアプリです。ゲーム感覚で世界地図を体感しよう。',
         theme_color: '#00bcd4',
         background_color: '#121212',
         display: 'standalone',
