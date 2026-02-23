@@ -171,6 +171,21 @@ create table if not exists public.challenge_unrated_results (
 create index if not exists idx_challenge_unrated_user on public.challenge_unrated_results(user_id);
 
 -- =============================================================
+-- 7b. app_config（アプリケーション設定）
+-- =============================================================
+
+create table if not exists public.app_config (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
+create trigger app_config_set_updated_at
+  before update on public.app_config
+  for each row
+  execute function public.update_updated_at();
+
+-- =============================================================
 -- 8. RLS ポリシー
 -- =============================================================
 
@@ -259,6 +274,13 @@ create policy "Challenge unrated results viewable by everyone"
 create policy "Users can insert own challenge unrated results"
   on public.challenge_unrated_results for insert
   with check (auth.uid() = user_id);
+
+-- app_config
+alter table public.app_config enable row level security;
+
+create policy "Anyone can read app_config"
+  on public.app_config for select
+  using (true);
 
 -- =============================================================
 -- 9. RPC 関数

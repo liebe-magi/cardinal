@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { fetchAppConfig } from '../lib/appConfig';
 import { regionLabels, type Region } from '../lib/regions';
 import { getUTCDateString } from '../lib/seededRandom';
 import { fetchAllModeStats, fetchRatingRank, getDailyProgress } from '../lib/supabaseApi';
@@ -16,6 +17,9 @@ export function ModeSelect() {
   const pendingSettledCount = useGameStore((s) => s.pendingSettledCount);
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
+  const [showUpdateRequired, setShowUpdateRequired] = useState(false);
+  const [isMaintenance, setIsMaintenance] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState<string | null>(null);
   const [dailyStatus, setDailyStatus] = useState<'available' | 'in_progress' | 'completed'>(
     'available',
   );
@@ -38,6 +42,20 @@ export function ModeSelect() {
       navigate('/setup', { replace: true });
     }
   }, [isAuthenticated, profile, user, navigate]);
+
+  // Fetch app config (maintenance & version) on mount
+  useEffect(() => {
+    (async () => {
+      const config = await fetchAppConfig();
+      if (config.maintenance) {
+        setIsMaintenance(true);
+        setMaintenanceMessage(config.maintenanceMessage);
+      }
+      if (!config.versionOk) {
+        setShowUpdateRequired(true);
+      }
+    })();
+  }, []);
 
   // Check daily challenge status & fetch rank
   useEffect(() => {
@@ -111,6 +129,19 @@ export function ModeSelect() {
     if (mode === 'challenge' && subMode === 'rated' && dailyStatus === 'completed') {
       return; // Already played today
     }
+
+    // Fetch latest config to check maintenance/version gate
+    const config = await fetchAppConfig();
+    if (config.maintenance) {
+      setIsMaintenance(true);
+      setMaintenanceMessage(config.maintenanceMessage);
+      return;
+    }
+    if (!config.versionOk) {
+      setShowUpdateRequired(true);
+      return;
+    }
+
     setIsStarting(true);
     await startGame(mode, subMode);
     setIsStarting(false);
@@ -127,6 +158,40 @@ export function ModeSelect() {
 
   return (
     <>
+      {/* Maintenance mode overlay */}
+      {isMaintenance && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 border border-amber-500/40 rounded-2xl shadow-xl shadow-amber-500/10 px-6 py-5 mx-4 max-w-sm w-full text-center">
+            <div className="text-3xl mb-3">🔧</div>
+            <h3 className="text-lg font-bold text-white mb-2">{t.ui.maintenanceTitle}</h3>
+            <p className="text-sm text-gray-300 mb-4">
+              {maintenanceMessage || t.ui.maintenanceDefault}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-4 py-2.5 text-sm font-semibold bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors cursor-pointer"
+            >
+              {t.ui.maintenanceReload}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Version update required modal */}
+      {showUpdateRequired && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 border border-cyan-600/40 rounded-2xl shadow-xl shadow-cyan-500/10 px-6 py-5 mx-4 max-w-sm w-full text-center">
+            <div className="text-3xl mb-3">🔄</div>
+            <h3 className="text-lg font-bold text-white mb-2">{t.ui.updateRequiredTitle}</h3>
+            <p className="text-sm text-gray-300 mb-4">{t.ui.updateRequiredBody}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-4 py-2.5 text-sm font-semibold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors cursor-pointer"
+            >
+              {t.ui.updateRequiredReload}
+            </button>
+          </div>
+        </div>
+      )}
       <Header />
       <div className="animate-fade-in space-y-5">
         {/* Hero rating card */}
