@@ -1,69 +1,41 @@
 # エリア別国割り当て一覧 (Region Assignments)
 
-## 東アジア (East Asia)
+## アジア (Asia)
 
-所属国数: **6カ国**
-
-| 国コード (Code) | 国名 (Country) | 英語国名 (English) |
-| --------------- | -------------- | ------------------ |
-| JP              | 日本           | Japan              |
-| CN              | 中国           | China              |
-| KR              | 韓国           | South Korea        |
-| KP              | 北朝鮮         | North Korea        |
-| MN              | モンゴル       | Mongolia           |
-| TW              | 台湾           | Taiwan             |
-
-## 東南アジア (Southeast Asia)
-
-所属国数: **11カ国**
-
-| 国コード (Code) | 国名 (Country) | 英語国名 (English) |
-| --------------- | -------------- | ------------------ |
-| ID              | インドネシア   | Indonesia          |
-| VN              | ベトナム       | Viet Nam           |
-| TH              | タイ           | Thailand           |
-| MY              | マレーシア     | Malaysia           |
-| PH              | フィリピン     | Philippines        |
-| SG              | シンガポール   | Singapore          |
-| MM              | ミャンマー     | Myanmar            |
-| KH              | カンボジア     | Cambodia           |
-| LA              | ラオス         | Laos               |
-| BN              | ブルネイ       | Brunei             |
-| TL              | 東ティモール   | East Timor         |
-
-## 南アジア (South Asia)
-
-所属国数: **8カ国**
-
-| 国コード (Code) | 国名 (Country) | 英語国名 (English) |
-| --------------- | -------------- | ------------------ |
-| IN              | インド         | India              |
-| PK              | パキスタン     | Pakistan           |
-| BD              | バングラデシュ | Bangladesh         |
-| LK              | スリランカ     | Sri Lanka          |
-| NP              | ネパール       | Nepal              |
-| AF              | アフガニスタン | Afghanistan        |
-| BT              | ブータン       | Bhutan             |
-| MV              | モルディブ     | Maldives           |
-
-## 中央アジア (Central Asia)
-
-所属国数: **5カ国**
+所属国数: **44カ国**
 
 | 国コード (Code) | 国名 (Country)   | 英語国名 (English) |
 | --------------- | ---------------- | ------------------ |
+| JP              | 日本             | Japan              |
+| CN              | 中国             | China              |
+| KR              | 韓国             | South Korea        |
+| KP              | 北朝鮮           | North Korea        |
+| MN              | モンゴル         | Mongolia           |
+| TW              | 台湾             | Taiwan             |
+| ID              | インドネシア     | Indonesia          |
+| VN              | ベトナム         | Viet Nam           |
+| TH              | タイ             | Thailand           |
+| MY              | マレーシア       | Malaysia           |
+| PH              | フィリピン       | Philippines        |
+| SG              | シンガポール     | Singapore          |
+| MM              | ミャンマー       | Myanmar            |
+| KH              | カンボジア       | Cambodia           |
+| LA              | ラオス           | Laos               |
+| BN              | ブルネイ         | Brunei             |
+| TL              | 東ティモール     | East Timor         |
+| IN              | インド           | India              |
+| PK              | パキスタン       | Pakistan           |
+| BD              | バングラデシュ   | Bangladesh         |
+| LK              | スリランカ       | Sri Lanka          |
+| NP              | ネパール         | Nepal              |
+| AF              | アフガニスタン   | Afghanistan        |
+| BT              | ブータン         | Bhutan             |
+| MV              | モルディブ       | Maldives           |
 | KZ              | カザフスタン     | Kazakhstan         |
 | UZ              | ウズベキスタン   | Uzbekistan         |
 | TM              | トルクメニスタン | Turkmenistan       |
 | KG              | キルギス         | Kyrgyzstan         |
 | TJ              | タジキスタン     | Tajikistan         |
-
-## 中東 (Middle East)
-
-所属国数: **14カ国**
-
-| 国コード (Code) | 国名 (Country)   | 英語国名 (English) |
-| --------------- | ---------------- | ------------------ |
 | SA              | サウジアラビア   | Saudi Arabia       |
 | IR              | イラン           | Iran               |
 | TR              | トルコ           | Türkiye            |
@@ -194,9 +166,9 @@
 | ST              | サントメ・プリンシペ | Sao Tome and Principe  |
 | SC              | セーシェル           | Seychelles             |
 
-## 北米 (North America)
+## 南北アメリカ (Americas)
 
-所属国数: **23カ国**
+所属国数: **35カ国**
 
 | 国コード (Code) | 国名 (Country)                   | 英語国名 (English)             |
 | --------------- | -------------------------------- | ------------------------------ |
@@ -223,25 +195,18 @@
 | AG              | アンティグア・バーブーダ         | Antigua and Barbuda            |
 | DM              | ドミニカ国                       | Dominica                       |
 | KN              | セントキッツ                     | St. Kitts and Nevis            |
-
-## 南米 (South America)
-
-所属国数: **12カ国**
-
-| 国コード (Code) | 国名 (Country) | 英語国名 (English) |
-| --------------- | -------------- | ------------------ |
-| BR              | ブラジル       | Brazil             |
-| CO              | コロンビア     | Colombia           |
-| AR              | アルゼンチン   | Argentina          |
-| PE              | ペルー         | Peru               |
-| VE              | ベネズエラ     | Venezuela          |
-| CL              | チリ           | Chile              |
-| EC              | エクアドル     | Ecuador            |
-| BO              | ボリビア       | Bolivia            |
-| PY              | パラグアイ     | Paraguay           |
-| UY              | ウルグアイ     | Uruguay            |
-| GY              | ガイアナ       | Guyana             |
-| SR              | スリナム       | Suriname           |
+| BR              | ブラジル                         | Brazil                         |
+| CO              | コロンビア                       | Colombia                       |
+| AR              | アルゼンチン                     | Argentina                      |
+| PE              | ペルー                           | Peru                           |
+| VE              | ベネズエラ                       | Venezuela                      |
+| CL              | チリ                             | Chile                          |
+| EC              | エクアドル                       | Ecuador                        |
+| BO              | ボリビア                         | Bolivia                        |
+| PY              | パラグアイ                       | Paraguay                       |
+| UY              | ウルグアイ                       | Uruguay                        |
+| GY              | ガイアナ                         | Guyana                         |
+| SR              | スリナム                         | Suriname                       |
 
 ## オセアニア (Oceania)
 

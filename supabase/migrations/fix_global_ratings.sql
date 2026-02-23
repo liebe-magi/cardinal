@@ -14,9 +14,16 @@ FROM public.user_mode_ratings
 WHERE mode = 'survival_rated'
 ON CONFLICT (user_id, mode) DO NOTHING;
 
--- Remove legacy survival_rated rows after migration to global.
-DELETE FROM public.user_mode_ratings
-WHERE mode = 'survival_rated';
+-- Remove legacy survival_rated rows only when matching global row exists.
+-- This avoids accidental data loss if a copy step is interrupted.
+DELETE FROM public.user_mode_ratings s
+WHERE s.mode = 'survival_rated'
+  AND EXISTS (
+    SELECT 1
+    FROM public.user_mode_ratings g
+    WHERE g.user_id = s.user_id
+      AND g.mode = 'global'
+  );
 
 -- ------------------------------------------------------------------
 -- 2) RPC fix: submit_rated_answer

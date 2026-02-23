@@ -12,9 +12,21 @@ RETURNS TABLE (
   match_count bigint
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 AS $$
+DECLARE
+  v_uid uuid;
 BEGIN
+  v_uid := auth.uid();
+
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Authentication required';
+  END IF;
+
+  IF p_user_id IS DISTINCT FROM v_uid THEN
+    RAISE EXCEPTION 'Forbidden: p_user_id must match auth.uid()';
+  END IF;
+
   RETURN QUERY
   WITH bucketing AS (
     SELECT
@@ -28,7 +40,7 @@ BEGIN
         ELSE date_trunc('day', answered_at)
       END AS bucket_date
     FROM match_history
-    WHERE user_id = p_user_id
+    WHERE user_id = v_uid
       AND status != 'pending'
       AND user_rating_after IS NOT NULL
       AND answered_at IS NOT NULL
