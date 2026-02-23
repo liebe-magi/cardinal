@@ -32,7 +32,7 @@ interface GameStore {
   // State
   gameState: GameState;
   currentQuestion: Question | null;
-  userGuess: QuadDirection;
+  userGuess: QuadDirection | null;
   isShowingResult: boolean;
   lastAnswerResult: {
     isCorrect: boolean;
@@ -71,7 +71,7 @@ type HighScoreCategory = 'survival_rated' | 'survival_unrated';
 export const useGameStore = create<GameStore>((set, get) => ({
   gameState: createInitialGameState('survival', 'unrated'),
   currentQuestion: null,
-  userGuess: { ns: 'N', ew: 'E' },
+  userGuess: null,
   isShowingResult: false,
   lastAnswerResult: null,
   filteredCities: null,
@@ -163,10 +163,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       gameState,
       currentQuestion: null,
-      userGuess: {
-        ns: Math.random() > 0.5 ? 'N' : 'S',
-        ew: Math.random() > 0.5 ? 'E' : 'W',
-      },
+      userGuess: null,
       isShowingResult: false,
       lastAnswerResult: null,
       filteredCities,
@@ -244,10 +241,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       currentQuestion: question,
       currentDbQuestion: dbQuestion,
-      userGuess: {
-        ns: Math.random() > 0.5 ? 'N' : 'S',
-        ew: Math.random() > 0.5 ? 'E' : 'W',
-      },
+      userGuess: null,
       isShowingResult: false,
       lastAnswerResult: null,
     });
@@ -259,7 +253,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   submitAnswer: async () => {
     const { currentQuestion, userGuess, gameState, currentDbQuestion } = get();
-    if (!currentQuestion) return;
+    if (!currentQuestion || !userGuess) return;
 
     set({ isProcessing: true });
 
@@ -507,7 +501,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         totalRatingChange: progress.total_rating_change,
       },
       currentQuestion: null,
-      userGuess: { ns: 'N', ew: 'E' },
+      userGuess: null,
       isShowingResult: false,
       lastAnswerResult: null,
       filteredCities: null,
@@ -525,7 +519,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({
       gameState: createInitialGameState('survival', 'rated'),
       currentQuestion: null,
-      userGuess: { ns: 'N', ew: 'E' },
+      userGuess: null,
       isShowingResult: false,
       lastAnswerResult: null,
       filteredCities: null,

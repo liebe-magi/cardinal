@@ -120,10 +120,14 @@ export function LandingPage() {
           />
 
           <div className="direction-display text-center my-4 font-bold text-accent">
-            {formatDirection(userGuess, lang)} {t.ui.direction}
+            {userGuess ? `${formatDirection(userGuess, lang)} ${t.ui.direction}` : '\u00A0'}
           </div>
 
-          <button onClick={handleSubmitAnswer} disabled={isStarting} className="submit-btn w-full">
+          <button
+            onClick={handleSubmitAnswer}
+            disabled={isStarting || !userGuess}
+            className="submit-btn w-full"
+          >
             {t.ui.submit}
           </button>
         </div>

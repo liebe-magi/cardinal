@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatCoord, formatDirection } from '../lib/quiz';
 import { useGameStore } from '../stores/gameStore';
@@ -10,8 +11,13 @@ export function QuestionResult() {
   const { lang, t } = useSettingsStore();
   const { gameState, currentQuestion, lastAnswerResult, nextQuestion, endGame } = useGameStore();
 
+  useEffect(() => {
+    if (!currentQuestion || !lastAnswerResult) {
+      navigate('/', { replace: true });
+    }
+  }, [currentQuestion, lastAnswerResult, navigate]);
+
   if (!currentQuestion || !lastAnswerResult) {
-    navigate('/', { replace: true });
     return null;
   }
 
