@@ -156,6 +156,14 @@ export const translations = {
       contact: 'お問い合わせ',
       userId: 'ユーザーID',
       copyId: 'コピー',
+      // Maintenance & Version gate
+      maintenanceTitle: 'メンテナンス中',
+      maintenanceDefault: 'ただいまメンテナンス中です。しばらくお待ちください。',
+      maintenanceReload: '再読み込み',
+      updateRequiredTitle: 'アップデートが必要です',
+      updateRequiredBody:
+        '新しいバージョンが公開されています。ページを更新してからプレイしてください。',
+      updateRequiredReload: 'ページを更新する',
     },
     directions: {
       N: '北',
@@ -350,6 +358,13 @@ export const translations = {
       contact: 'Contact',
       userId: 'User ID',
       copyId: 'Copy',
+      // Maintenance & Version gate
+      maintenanceTitle: 'Under Maintenance',
+      maintenanceDefault: 'The service is currently under maintenance. Please try again later.',
+      maintenanceReload: 'Reload',
+      updateRequiredTitle: 'Update Required',
+      updateRequiredBody: 'A new version is available. Please reload the page before playing.',
+      updateRequiredReload: 'Reload Page',
     },
     directions: {
       N: 'N',

@@ -177,8 +177,13 @@ create index if not exists idx_challenge_unrated_user on public.challenge_unrate
 create table if not exists public.app_config (
   key text primary key,
   value text not null,
-  updated_at timestamptz default now()
+  updated_at timestamptz not null default now()
 );
+
+create trigger app_config_set_updated_at
+  before update on public.app_config
+  for each row
+  execute function public.update_updated_at();
 
 -- =============================================================
 -- 8. RLS ポリシー

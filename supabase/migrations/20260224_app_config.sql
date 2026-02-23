@@ -4,8 +4,14 @@
 CREATE TABLE IF NOT EXISTS public.app_config (
   key text PRIMARY KEY,
   value text NOT NULL,
-  updated_at timestamptz DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- updated_at を自動更新するトリガー
+CREATE TRIGGER set_app_config_updated_at
+  BEFORE UPDATE ON public.app_config
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at();
 
 -- RLS: 全ユーザーが読み取り可能、書き込みは管理者のみ（SQL Editor / Dashboard）
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
