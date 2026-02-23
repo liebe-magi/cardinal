@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
 import L from 'leaflet';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { cities } from '../cities';
+import { regionLabels, type Region } from '../lib/regions';
 import { fetchAllModeStats, fetchRatingRank, type ModeStats } from '../lib/supabaseApi';
 import { useAuthStore } from '../stores/authStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -97,7 +98,7 @@ export function Profile() {
   const buildShareText = useCallback(() => {
     if (!profile) return '';
     const lines: string[] = ['🧭 Cardinal Geo', ''];
-    lines.push(`⭐ Rating: ${Math.round(profile.rating)}`);
+    lines.push(`⭐ Rating: ${Math.round(profile.modeRatings?.global?.rating ?? profile.rating)}`);
     if (rank) {
       const medal = rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊';
       lines.push(`${medal} ${t.ui.ratingRank}: ${rank.rank} / ${rank.total}`);
@@ -211,6 +212,21 @@ export function Profile() {
     { color: 'hsl(0,85%,50%)', label: '≥10' },
   ];
 
+  const globalRatingLabel = lang === 'ja' ? 'グローバルレーティング' : 'Global Rating';
+  const modeRatingsLabel = lang === 'ja' ? 'モード別レーティング' : 'Mode Ratings';
+  const performanceStatsLabel = lang === 'ja' ? 'パフォーマンス統計' : 'Performance Stats';
+
+  const getModeDisplayLabel = (mode: string): string => {
+    if (mode === 'starter_rated') return t.modes.starter;
+    if (mode.endsWith('_rated')) {
+      const region = mode.replace('_rated', '') as Region;
+      if (region in regionLabels) {
+        return regionLabels[region][lang];
+      }
+    }
+    return mode;
+  };
+
   return (
     <>
       <Header />
@@ -313,30 +329,69 @@ export function Profile() {
         {/* Tab 1: Stats */}
         <div className={activeTab === 'stats' ? 'block animate-fade-in' : 'hidden'}>
           {/* 1. Main Rating Block */}
-          <div className="mb-6 p-6 sm:p-8 bg-surface-light/40 border border-white/5 rounded-2xl text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
-            <div className="relative">
-              <div className="text-text-secondary text-sm mb-2 uppercase tracking-wider font-medium">
-                {t.ui.rating}
-              </div>
-              <div className="text-5xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent mb-2">
-                {Math.round(profile.rating)}
+          <div className="mb-6 p-6 sm:p-8 bg-surface-light/40 border border-primary/20 rounded-2xl text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-300/5 pointer-events-none" />
+            <div className="absolute -top-10 -right-6 text-8xl opacity-10 pointer-events-none">
+              🌐
+            </div>
+            <div className="relative flex flex-col items-center">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary uppercase tracking-[0.18em] border border-primary/25 mb-3">
+                {globalRatingLabel}
+              </span>
+              <div className="text-5xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent leading-none mb-2">
+                {Math.round(profile.modeRatings?.['global']?.rating ?? profile.rating ?? 1500)}
               </div>
               <div className="text-xs text-text-secondary font-mono">
-                RD: {Math.round(profile.rd)} / Vol: {profile.vol.toFixed(4)}
+                RD: {Math.round(profile.modeRatings?.['global']?.rd ?? profile.rd ?? 350)} / Vol:{' '}
+                {(profile.modeRatings?.['global']?.vol ?? profile.vol ?? 0.06).toFixed(4)}
               </div>
               {rank && (
-                <div className="text-sm text-text-secondary mt-2 font-semibold">
-                  {rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊'} {t.ui.ratingRank}:{' '}
-                  {rank.rank} / {rank.total}
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-light/60 border border-white/10 text-xs sm:text-sm text-text-secondary font-semibold">
+                  <span>{rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊'}</span>
+                  <span>
+                    {t.ui.ratingRank}: {rank.rank} / {rank.total}
+                  </span>
                 </div>
               )}
             </div>
           </div>
 
+          {/* Mode Ratings List */}
+          {profile.modeRatings && Object.keys(profile.modeRatings).length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
+                🎮 {modeRatingsLabel}
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Object.entries(profile.modeRatings)
+                  .filter(([mode]) => mode !== 'global')
+                  .map(([mode, ratingData]) => {
+                    const displayMode = getModeDisplayLabel(mode);
+
+                    return (
+                      <div
+                        key={mode}
+                        className="bg-surface-light/40 border border-white/5 rounded-xl p-3 text-center"
+                      >
+                        <div className="text-xs text-text-secondary mb-1 font-medium capitalize">
+                          {displayMode}
+                        </div>
+                        <div className="text-xl font-bold text-text-primary">
+                          {Math.round(ratingData.rating)}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           {/* Mode Stats */}
           {stats && (
             <div className="mb-6 space-y-3">
+              <h3 className="text-sm font-bold text-text-primary mb-3 uppercase tracking-wider">
+                📈 {performanceStatsLabel}
+              </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {/* Highest Rating Box */}
                 <div className="bg-surface-light/40 border border-white/5 rounded-xl p-4 text-center">
@@ -347,7 +402,7 @@ export function Profile() {
                     {Math.round(stats.highestRating)}
                   </div>
                   <div className="text-[10px] text-text-secondary uppercase tracking-wide">
-                    Rating
+                    {t.ui.rating}
                   </div>
                 </div>
 
@@ -373,7 +428,7 @@ export function Profile() {
                     {stats.totalRatedMatches}
                   </div>
                   <div className="text-[10px] text-text-secondary uppercase tracking-wide">
-                    Plays
+                    {t.ui.statsPlays}
                   </div>
                 </div>
               </div>
@@ -403,7 +458,9 @@ export function Profile() {
                     <div className="text-lg font-bold text-text-primary mb-0.5">
                       {stats.challengeDaily.count}
                     </div>
-                    <div className="text-[10px] text-text-secondary uppercase">Plays</div>
+                    <div className="text-[10px] text-text-secondary uppercase">
+                      {t.ui.statsPlays}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -415,7 +472,10 @@ export function Profile() {
             <div className="text-text-secondary text-xs mb-3 uppercase tracking-wider font-medium text-center">
               {t.ui.ratingHistory}
             </div>
-            <RatingChart userId={profile.id} currentRating={profile.rating} />
+            <RatingChart
+              userId={profile.id}
+              currentRating={profile.modeRatings?.global?.rating ?? profile.rating}
+            />
           </div>
         </div>
 

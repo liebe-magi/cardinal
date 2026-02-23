@@ -117,25 +117,38 @@ export function ModeSelect() {
     navigate('/quiz');
   };
 
+  const getModeRating = (modeKey: 'global' | 'starter_rated' | `${Region}_rated`): number => {
+    if (!profile) return 1500;
+    if (modeKey === 'global') {
+      return Math.round(profile.modeRatings?.global?.rating ?? profile.rating ?? 1500);
+    }
+    return Math.round(profile.modeRatings?.[modeKey]?.rating ?? 1500);
+  };
+
   return (
     <>
       <Header />
       <div className="animate-fade-in space-y-5">
         {/* Hero rating card */}
         {isAuthenticated && profile && (
-          <div className="glass-card mb-8 p-6 sm:p-8 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
-            <div className="relative">
-              <div className="text-text-secondary text-sm mb-2 tracking-wider uppercase font-medium">
-                {t.ui.rating}
-              </div>
-              <div className="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent">
-                {Math.round(profile.rating)}
+          <div className="glass-card mb-8 p-6 sm:p-8 relative overflow-hidden border border-primary/20">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-cyan-300/5 pointer-events-none" />
+            <div className="absolute -top-10 -right-6 text-8xl opacity-10 pointer-events-none">
+              🌐
+            </div>
+            <div className="relative flex flex-col items-center text-center">
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-primary/15 text-primary uppercase tracking-[0.18em] border border-primary/25 mb-3">
+                Global Rating
+              </span>
+              <div className="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent leading-none">
+                {Math.round(profile.modeRatings?.global?.rating ?? profile.rating)}
               </div>
               {rank && (
-                <div className="text-sm text-text-secondary mt-2 font-semibold">
-                  {rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊'} {t.ui.ratingRank}:{' '}
-                  {rank.rank} / {rank.total}
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-light/60 border border-white/10 text-xs sm:text-sm text-text-secondary font-semibold">
+                  <span>{rank.rank <= 3 ? ['🥇', '🥈', '🥉'][rank.rank - 1] : '📊'}</span>
+                  <span>
+                    {t.ui.ratingRank}: {rank.rank} / {rank.total}
+                  </span>
                 </div>
               )}
             </div>
@@ -331,6 +344,15 @@ export function ModeSelect() {
                 <p className="text-text-secondary text-sm leading-relaxed mb-3">
                   {t.modeDesc.starter}
                 </p>
+                {isAuthenticated && profile && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/20 border border-white/10 text-sm mt-auto w-fit">
+                    <span className="text-accent">🏅</span>
+                    <span className="text-text-secondary">{t.modes.starter}:</span>
+                    <span className="font-bold text-text-primary">
+                      {getModeRating('starter_rated')}
+                    </span>
+                  </div>
+                )}
                 {!isAuthenticated && (
                   <div className="text-xs text-error font-medium mt-auto">
                     🔒 {t.ui.loginRequired}
@@ -400,7 +422,10 @@ export function ModeSelect() {
                       onClick={() => handleStart(region as GameMode, 'rated')}
                       className="p-3 rounded-xl font-semibold text-xs sm:text-sm bg-black/20 text-text-primary border border-white/10 hover:border-primary/40 hover:bg-primary/5 hover:text-primary cursor-pointer transition-all duration-200 text-center"
                     >
-                      {regionLabels[region][lang]}
+                      <div>{regionLabels[region][lang]}</div>
+                      <div className="text-[10px] mt-1 opacity-80">
+                        🏅 {getModeRating(`${region}_rated`)}
+                      </div>
                     </button>
                   ))}
                 </div>

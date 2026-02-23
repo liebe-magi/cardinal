@@ -287,7 +287,7 @@ export const translations = {
       dailyResetTime: 'Resets at UTC 00:00 ({tz} {time})',
       // Ranking tabs
       rankingRating: 'Rating',
-      rankingSurvivalRated: 'Survival (Rated)',
+      rankingSurvivalRated: 'Win Streak',
       rankingSurvivalUnrated: 'Survival (Unrated)',
       rankingDailyChallenge: 'Daily Challenge',
       rankingDailyAvg: 'Daily Average',

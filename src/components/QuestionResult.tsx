@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatCoord, formatDirection } from '../lib/quiz';
+import { regionLabels } from '../lib/regions';
+import { useAuthStore } from '../stores/authStore';
 import { useGameStore } from '../stores/gameStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { Header } from './Header';
@@ -9,6 +11,7 @@ import { ResultMap } from './ResultMap';
 export function QuestionResult() {
   const navigate = useNavigate();
   const { lang, t } = useSettingsStore();
+  const { profile, isAuthenticated } = useAuthStore();
   const { gameState, currentQuestion, lastAnswerResult, nextQuestion, endGame } = useGameStore();
 
   useEffect(() => {
@@ -48,6 +51,35 @@ export function QuestionResult() {
   const cityBCountry = lang === 'ja' ? cityB.nameJp : cityB.nameEn;
   const wikiA = `https://${lang}.wikipedia.org/wiki/${cityAName}`;
   const wikiB = `https://${lang}.wikipedia.org/wiki/${cityBName}`;
+
+  const ratingMode =
+    gameState.mode === 'survival' || gameState.mode === 'challenge'
+      ? 'global'
+      : gameState.mode === 'starter'
+        ? 'starter_rated'
+        : `${gameState.mode}_rated`;
+  const ratingModeLabel =
+    ratingMode === 'global'
+      ? 'Global'
+      : ratingMode === 'starter_rated'
+        ? t.modes.starter
+        : ratingMode === 'asia_rated'
+          ? regionLabels.asia[lang]
+          : ratingMode === 'europe_rated'
+            ? regionLabels.europe[lang]
+            : ratingMode === 'africa_rated'
+              ? regionLabels.africa[lang]
+              : ratingMode === 'americas_rated'
+                ? regionLabels.americas[lang]
+                : ratingMode === 'oceania_rated'
+                  ? regionLabels.oceania[lang]
+                  : 'Mode';
+  const currentModeRating =
+    ratingMode === 'global'
+      ? Math.round(profile?.modeRatings?.global?.rating ?? profile?.rating ?? 1500)
+      : Math.round(profile?.modeRatings?.[ratingMode]?.rating ?? 1500);
+  const showModeRating =
+    gameState.subMode === 'rated' && gameState.mode !== 'learning' && isAuthenticated;
 
   const handleNext = async () => {
     // Determine if the current mode is a "survival-style" endless mode
@@ -106,6 +138,16 @@ export function QuestionResult() {
             <span className="text-xl font-bold text-text-primary">{gameState.score}</span>
           </div>
         </div>
+
+        {/* Current mode rating */}
+        {showModeRating && (
+          <div className="flex justify-center mb-5">
+            <div className="bg-surface-light/60 border border-white/5 px-5 py-2.5 rounded-full">
+              <span className="text-text-secondary text-sm mr-2">🏅 {ratingModeLabel}</span>
+              <span className="text-xl font-bold text-text-primary">{currentModeRating}</span>
+            </div>
+          </div>
+        )}
 
         {/* Direction comparison — side by side on wider screens */}
         <div className="grid grid-cols-2 gap-3 mb-5">

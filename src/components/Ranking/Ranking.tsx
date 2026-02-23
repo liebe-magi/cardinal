@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { regionLabels } from '../../lib/regions';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -20,6 +21,7 @@ export function Ranking() {
   const { t, lang } = useSettingsStore();
   const { profile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<RankingTab>('rating');
+  const [ratingMode, setRatingMode] = useState<string>('global');
   const [entries, setEntries] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [dailyDate, setDailyDate] = useState(new Date().toISOString().slice(0, 10));
@@ -36,7 +38,9 @@ export function Ranking() {
 
       switch (activeTab) {
         case 'rating': {
-          const { data: results } = await supabase.rpc('get_rating_ranking');
+          const { data: results } = await supabase.rpc('get_rating_ranking', {
+            p_mode: ratingMode,
+          });
           data =
             results?.map(
               (r: { id: string; username: string; rating: number; play_count: number }) => ({
@@ -103,7 +107,7 @@ export function Ranking() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, dailyDate, lang]);
+  }, [activeTab, ratingMode, dailyDate, lang]);
 
   useEffect(() => {
     fetchRanking();
@@ -114,6 +118,16 @@ export function Ranking() {
     { key: 'survival_rated', label: t.ui.rankingSurvivalRated || '連続正解数' },
     { key: 'daily', label: t.ui.rankingDailyChallenge || 'デイリーチャレンジ' },
     { key: 'daily_avg', label: t.ui.rankingDailyAvg || 'デイリー平均' },
+  ];
+
+  const ratingModes = [
+    { key: 'global', label: 'Global' },
+    { key: 'starter_rated', label: t.modes.starter },
+    { key: 'asia_rated', label: regionLabels.asia[lang] },
+    { key: 'europe_rated', label: regionLabels.europe[lang] },
+    { key: 'africa_rated', label: regionLabels.africa[lang] },
+    { key: 'americas_rated', label: regionLabels.americas[lang] },
+    { key: 'oceania_rated', label: regionLabels.oceania[lang] },
   ];
 
   const changeDay = (delta: number) => {
@@ -146,6 +160,25 @@ export function Ranking() {
             </button>
           ))}
         </div>
+
+        {/* Rating Mode Selector */}
+        {activeTab === 'rating' && (
+          <div className="flex flex-wrap gap-1.5 mb-5">
+            {ratingModes.map((mode) => (
+              <button
+                key={mode.key}
+                onClick={() => setRatingMode(mode.key)}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium cursor-pointer transition-all duration-200 border ${
+                  ratingMode === mode.key
+                    ? 'bg-accent/15 text-accent border-accent/25'
+                    : 'bg-surface-light/20 text-text-secondary border-white/5 hover:border-text-secondary/30 hover:bg-surface-hover'
+                }`}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Daily date picker */}
         {activeTab === 'daily' && (

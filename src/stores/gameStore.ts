@@ -16,6 +16,7 @@ import {
   updateWeaknessScoreDb,
   type DbQuestion,
 } from '../lib/supabaseApi';
+import type { City } from '../types/city';
 import type {
   GameMode,
   GameState,
@@ -24,9 +25,42 @@ import type {
   Question,
   QuestionRecord,
 } from '../types/game';
-import type { City } from '../types/city';
 import { createInitialGameState } from '../types/game';
-import { useAuthStore } from './authStore';
+import { useAuthStore, type Profile } from './authStore';
+
+function getRatingModeFromGameMode(mode: GameMode): string {
+  if (mode === 'survival' || mode === 'challenge') return 'global';
+  if (mode === 'starter') return 'starter_rated';
+  if (mode === 'learning') return 'global';
+  return `${mode}_rated`;
+}
+
+function getProfileRatingForMode(profile: Profile, mode: GameMode): GlickoRating {
+  const ratingMode = getRatingModeFromGameMode(mode);
+  const modeRating = profile.modeRatings?.[ratingMode];
+  if (modeRating) {
+    return {
+      rating: modeRating.rating,
+      rd: modeRating.rd,
+      vol: modeRating.vol,
+    };
+  }
+  // Global tracks survival/challenge together. If global doesn't exist yet,
+  // fall back to legacy profile rating.
+  if (ratingMode === 'global') {
+    return {
+      rating: profile.rating,
+      rd: profile.rd,
+      vol: profile.vol,
+    };
+  }
+  // Starter/region modes should start independently from default values.
+  return {
+    rating: 1500,
+    rd: 350,
+    vol: 0.06,
+  };
+}
 
 interface GameStore {
   // State
@@ -114,7 +148,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Record rating at the start of the session
       const latestProfile = useAuthStore.getState().profile;
       if (latestProfile) {
-        gameState.ratingBefore = latestProfile.rating;
+        const startRating = getProfileRatingForMode(latestProfile, mode);
+        gameState.ratingBefore = startRating.rating;
       }
     }
 
@@ -221,7 +256,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           dbQuestion.id,
           gameState.sessionId,
           modeStr,
-          authState.profile.rating,
+          getProfileRatingForMode(authState.profile, gameState.mode).rating,
           dbQuestion.rating,
         );
 
@@ -282,11 +317,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentDbQuestion &&
       gameState.currentMatchHistoryId
     ) {
-      const playerRating: GlickoRating = {
-        rating: authState.profile.rating,
-        rd: authState.profile.rd,
-        vol: authState.profile.vol,
-      };
+      const playerRating: GlickoRating = getProfileRatingForMode(authState.profile, gameState.mode);
       const pairRating: GlickoRating = {
         rating: currentDbQuestion.rating,
         rd: currentDbQuestion.rd,

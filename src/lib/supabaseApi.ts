@@ -84,19 +84,29 @@ export async function settlePendingMatches(userId: string): Promise<number> {
 
   let settledCount = 0;
 
-  // 2. Get current user profile for rating
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('rating, rd, vol')
-    .eq('id', userId)
-    .single();
+  // 2. Get current user mode ratings
+  const { data: modeRatingsData } = await supabase
+    .from('user_mode_ratings')
+    .select('mode, rating, rd, vol')
+    .eq('user_id', userId);
 
-  let currentPlayerRating: GlickoRating = profileData
-    ? { rating: profileData.rating, rd: profileData.rd, vol: profileData.vol }
-    : { rating: 1500, rd: 350, vol: 0.06 };
+  const modeRatings: Record<string, GlickoRating> = {};
+  if (modeRatingsData) {
+    for (const row of modeRatingsData) {
+      modeRatings[row.mode] = { rating: row.rating, rd: row.rd, vol: row.vol };
+    }
+  }
 
   // 3. Process each pending match sequentially (order matters for rating)
   for (const match of pendingMatches) {
+    const mode = match.mode;
+    const ratingMode = mode === 'survival_rated' || mode === 'challenge_rated' ? 'global' : mode;
+    const currentPlayerRating: GlickoRating = modeRatings[ratingMode] || {
+      rating: 1500,
+      rd: 350,
+      vol: 0.06,
+    };
+
     // Fetch current question rating
     const { data: questionData } = await supabase
       .from('questions')
@@ -126,8 +136,8 @@ export async function settlePendingMatches(userId: string): Promise<number> {
 
     if (success) {
       settledCount++;
-      // Update running player rating for next pending match
-      currentPlayerRating = result.player;
+      // Update running player rating for next pending match in the same mode
+      modeRatings[ratingMode] = result.player;
     }
   }
 
@@ -843,34 +853,66 @@ export async function fetchRatingHistoryAggregated(
 // ============================================================
 
 /**
- * Fetch the user's rating rank (1-based position among all users).
+ * Fetch the user's rating rank (1-based position among all users) for a specific mode.
  * Returns { rank, total } or null on error.
  */
 export async function fetchRatingRank(
   userId: string,
+  mode: string = 'global',
 ): Promise<{ rank: number; total: number } | null> {
   if (!supabase) return null;
 
-  // First, get the user's own rating
+  // First, get the user's own rating for the mode
   const { data: userData, error: errUser } = await supabase
-    .from('profiles')
+    .from('user_mode_ratings')
     .select('rating')
-    .eq('id', userId)
+    .eq('user_id', userId)
+    .eq('mode', mode)
     .single();
 
   if (errUser || !userData) {
-    console.error('Error fetching user rating:', errUser);
-    return null;
+    // If no rating exists for this mode, assume default 1500
+    const userRating = 1500;
+
+    // Count users with strictly higher rating
+    const { count: higherCount, error: err1 } = await supabase
+      .from('user_mode_ratings')
+      .select('*', { count: 'exact', head: true })
+      .eq('mode', mode)
+      .gt('rating', userRating)
+      .neq('user_id', userId);
+
+    if (err1) {
+      console.error('Error fetching higher count:', err1);
+      return null;
+    }
+
+    // Count total users with a rating in this mode
+    const { count: totalCount, error: err2 } = await supabase
+      .from('user_mode_ratings')
+      .select('*', { count: 'exact', head: true })
+      .eq('mode', mode);
+
+    if (err2) {
+      console.error('Error fetching total count:', err2);
+      return null;
+    }
+
+    return {
+      rank: (higherCount ?? 0) + 1,
+      total: totalCount ?? 0,
+    };
   }
 
   const userRating = userData.rating as number;
 
   // Count users with strictly higher rating (exclude self to avoid float precision issues)
   const { count: higherCount, error: err1 } = await supabase
-    .from('profiles')
+    .from('user_mode_ratings')
     .select('*', { count: 'exact', head: true })
+    .eq('mode', mode)
     .gt('rating', userRating)
-    .neq('id', userId);
+    .neq('user_id', userId);
 
   if (err1) {
     console.error('Error fetching rating rank:', err1);
@@ -879,8 +921,9 @@ export async function fetchRatingRank(
 
   // Count total users
   const { count: totalCount, error: err2 } = await supabase
-    .from('profiles')
-    .select('*', { count: 'exact', head: true });
+    .from('user_mode_ratings')
+    .select('*', { count: 'exact', head: true })
+    .eq('mode', mode);
 
   if (err2) {
     console.error('Error fetching total users:', err2);

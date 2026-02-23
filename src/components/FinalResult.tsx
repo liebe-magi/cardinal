@@ -40,7 +40,11 @@ export function FinalResult() {
   })();
   const isNewHighScore = category && gameState.score >= prevHighScore && gameState.score > 0;
 
-  const titleText = gameState.mode === 'survival' ? t.ui.gameOver : t.ui.challengeComplete;
+  const titleText =
+    gameState.mode === 'survival' ||
+    (gameState.mode !== 'challenge' && gameState.mode !== 'learning')
+      ? t.ui.gameOver
+      : t.ui.challengeComplete;
 
   // Cleanup accordion maps on unmount
   useEffect(() => {
