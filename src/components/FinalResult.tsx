@@ -160,9 +160,7 @@ export function FinalResult() {
         )}
 
         {/* Score & Rating */}
-        <div
-          className={`flex items-center justify-center gap-4 sm:gap-6 mb-5 ${isRatedGame && ratingBefore !== undefined && ratingAfter !== undefined ? '' : ''}`}
-        >
+        <div className="flex items-center justify-center gap-4 sm:gap-6 mb-5">
           {/* Score */}
           <div className="text-center">
             <span className="text-5xl sm:text-6xl font-extrabold bg-gradient-to-r from-primary via-cyan-300 to-primary bg-clip-text text-transparent">

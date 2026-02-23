@@ -137,9 +137,10 @@ create table if not exists public.match_history (
   rating_change double precision not null default 0,
 
   -- Opponent snapshot (composite opponent used for Glicko-2 calc)
-  opponent_rating double precision not null,
-  opponent_rd double precision not null,
-  opponent_vol double precision not null,
+  -- NULL許容: 既存行にはデータがないため。新規行では常に値が入る。
+  opponent_rating double precision,
+  opponent_rd double precision,
+  opponent_vol double precision,
 
   -- Question rating snapshot (before)
   question_rating_before double precision not null,

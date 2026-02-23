@@ -638,8 +638,12 @@ create or replace function public.update_best_survival_unrated(
 )
 returns void as $$
 begin
+  if p_user_id is distinct from auth.uid() then
+    raise exception 'update_best_survival_unrated: cannot modify another user''s profile';
+  end if;
+
   update public.profiles
   set best_score_survival_unrated = greatest(best_score_survival_unrated, p_score)
-  where id = p_user_id;
+  where id = auth.uid();
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security invoker;
